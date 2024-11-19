@@ -184,7 +184,327 @@ public class Main {
 
         }
 
+	private static Cliente ingresoDatosCliente(Scanner scanner) {
+		String dni = "";
+        String nombre = "";
+        String apellido = "";
+        String domicilio = "";
+        String telefono = "";
+
+        boolean datosValidos = false;
+
+        while (!datosValidos) {
+            try {
+                System.out.print("Ingrese el DNI del cliente: ");
+                dni = scanner.nextLine();
+                if (!dni.matches("\\d{8,9}")) {
+                    throw new IllegalArgumentException("El DNI debe tener 8 o 9 dígitos.");
+                }
+
+                System.out.print("Ingrese el nombre del cliente: ");
+                nombre = scanner.nextLine();
+                if (nombre.trim().isEmpty()) { 
+                    throw new IllegalArgumentException("El nombre no puede estar vacío.");
+                }
+
+                System.out.print("Ingrese el apellido del cliente: ");
+                apellido = scanner.nextLine();
+                if (apellido.trim().isEmpty()) { 
+                    throw new IllegalArgumentException("El apellido no puede estar vacío.");
+                }
+
+                System.out.print("Ingrese el domicilio del cliente: ");
+                domicilio = scanner.nextLine();
+                if (domicilio.trim().isEmpty()) { 
+                    throw new IllegalArgumentException("El domicilio no puede estar vacío.");
+                }
+
+                System.out.print("Ingrese el teléfono del cliente: ");
+                telefono = scanner.nextLine();
+                if (!telefono.matches("\\d+")) { 
+                    throw new IllegalArgumentException("El teléfono debe contener solo dígitos.");
+                }
+
+                datosValidos = true; 
+
+            } catch (IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+
+        return new Cliente(dni, nombre, apellido, domicilio, telefono);
+    }
+		
 	
+	private static Reserva realizarReserva(Scanner scanner, ClienteDaoImp clienteService, SalonDaoImp salonService, ServicioAdicionalDaoImp serviciosService, ReservaDaoImp reservaService) {
+		try {
+		Cliente cliente = new Cliente();
+		Salon salonBuscado = new Salon();
+		Reserva nuevaReserva = new Reserva();
+		
+		long id, idSalon;
+		double montoAdelantado = 0;
+		boolean comprobacionFecha = false, comprobacionHora = false, validacionMonto = false;
+		
+		List<ServicioAdicional> servicios = new ArrayList<>();
+		
+		System.out.println("\n¿Qué cliente va a reservar? Ingrese su ID.");
+		clienteService.consultarClientes();
+		id = scanner.nextLong();
+		scanner.nextLine();
+		
+			try {
+				cliente = clienteService.buscarCliente(id);
+			} catch (ClienteNoRegistradoException e) {
+				System.out.println("\nEl cliente no está registrado. Ingrese sus datos.");
+				cliente = ingresoDatosCliente(scanner);
+				clienteService.guardarCliente(cliente);
+			}
+			
+			nuevaReserva.setCliente(cliente);
+			
+		System.out.println("\nIngrese el ID del salón desea alquilar: ");
+		salonService.consultarSalones();
+			while (true) {
+				try {
+				idSalon = Long.parseLong(scanner.nextLine());
+				salonBuscado = salonService.buscarSalon(idSalon);
+				nuevaReserva.setSalon(salonBuscado);
+				break;
+				}catch(InputMismatchException e) {
+					System.out.println("Ingresa un ID valido: ");
+				}
+			}
+			
+		System.out.println("¿Para que fecha desea realizar la reserva? : (yyyy-MM-dd) ");
+			while (!comprobacionFecha) {
+				try {
+					
+		        String fechaEntrada = scanner.nextLine();
+		        LocalDate fechaIngresada = transformarFecha(fechaEntrada);
+		        comprobarFechaFutura(fechaIngresada);
+		        
+		        	if (fechaDisponible(fechaIngresada, reservaService, salonBuscado)) {
+		        		System.out.println("Fecha Disponible.");
+		        		nuevaReserva.setFecha(fechaIngresada);
+		        		comprobacionFecha = true;
+		        	}
+		        	
+				}catch(FechaPasadaException e) {
+					System.out.println(e.getMessage());
+					comprobacionFecha = false;
+				}catch(SalonNoDisponibleException e) {
+					System.out.println(e.getMessage());
+					comprobacionFecha = false;
+				}catch(DateTimeParseException e) {
+					System.out.println("Ingrese la fecha con el formato indicado: (yyyy-MM-dd): ");
+					comprobacionFecha = false;
+				}
+			}
+			
+		System.out.println("¿En que horario querría realizar la reserva? : (HH:mm) (10:00 - 23:00) ");
+			while(!comprobacionHora) {
+				try {
+					
+					String horaEntrada = scanner.nextLine();
+					LocalTime horaInicio = transformarHora(horaEntrada);
+					comprobacionHora = comprobarHoraEnRango(horaInicio);
+					nuevaReserva.setHoraInicio(horaEntrada);
+					
+				}catch(HoraFueraDeRangoException e) {
+					System.out.println(e.getMessage());
+					comprobacionHora = false;
+				}catch(DateTimeParseException e) {
+					System.out.println("Ingrese la hora con el formatio indicado: (HH:mm)");
+					comprobacionHora = false;
+				}catch(Exception e){
+					System.out.println("Entrada no válida. Intente nuevamente.");
+			        comprobacionHora = false;
+				}
+			}
+			
+		System.out.println("¿En que horario querría terminar la reserva? : (HH:mm) ");
+		comprobacionHora = false;
+			while(!comprobacionHora) {
+				try {
+					String horaEntrada = scanner.nextLine();
+					LocalTime horaFinal = transformarHora(horaEntrada);
+					comprobacionHora = comprobarHoraEnRango(horaFinal);
+					nuevaReserva.setHoraFin(horaEntrada);
+				}catch(HoraFueraDeRangoException e) {
+					System.out.println(e.getMessage());
+					comprobacionHora = false;
+				}catch(DateTimeParseException e) {
+					System.out.println("Ingrese la hora con el formatio indicado: (HH:mm)");
+					comprobacionHora = false;
+				}catch(Exception e) {
+					System.out.println("Entrada no válida. Intente nuevamente.");
+			        comprobacionHora = false;
+				}
+			}
+		
+		System.out.println("¿Desea añadir servicios adicionales?:  (s/n) ");	
+		String continuar = scanner.nextLine();
+		
+		while(continuar.equalsIgnoreCase("s")) {
+			System.out.println("Ingrese el ID del servicio que quiere agregar: ");
+			serviciosService.consultarServiciosAdicionales();
+			while (true) {
+				try {
+					long idServicio = Long.parseLong(scanner.nextLine());
+					ServicioAdicional servicio = serviciosService.buscarServicio(idServicio);
+					servicios.add(servicio);
+					System.out.println("Se ha añadido el servicio a su reserva.");
+					System.out.println("Se suma $ " +  servicio.getPrecio() + " a la reserva");
+					break;
+				}catch(NumberFormatException e) {
+					System.out.println("Ingrese un ID válido: ");
+				}catch(Exception e) {
+					System.out.println("Ha ocurrido un error. Intentalo de nuevo.");
+				}
+			}
+			
+			System.out.println("¿Deseas añadir otro servicio adicional? (s/n)");
+			continuar = scanner.nextLine();
+		}
+		
+		nuevaReserva.setServiciosAdicionales(servicios);	
+
+		System.out.println("Servicios: " + nuevaReserva.calcularServicios());
+		System.out.println("Horas extra: " + nuevaReserva.calcularCostoHorarioExtendido());
+		System.out.println("Salon: " + salonBuscado.getPrecio());
+		System.out.println("El Total es de: " + nuevaReserva.calcularMontoTotal());
+		
+		System.out.println("¿Desea abonar por adelantado? Si es asi, ¿Cuanto? En caso de que no, escribir '00' (00,00)");	
+			while(!validacionMonto) {
+				try {
+					montoAdelantado = Double.parseDouble(scanner.nextLine());
+					validacionMonto = validarMontoAdelantado(montoAdelantado, salonBuscado, servicios);
+					nuevaReserva.setPagoAdelantado(montoAdelantado);
+					nuevaReserva.setMontoPagado(montoAdelantado);
+					break;
+				}catch(NumberFormatException e) {
+					System.out.println("Ingrese un monto para pagar: (00,00)");
+				}catch(MontoNoValidoException e) {
+					System.out.println("Ingrese otro monto.");
+					System.out.println(e.getMessage());
+				}
+			}
+	
+			nuevaReserva.setCancelado(false);
+			nuevaReserva.setEstado(true);
+			
+		return nuevaReserva;
+		
+		}catch(Exception e) {
+			
+			System.out.println("Ha ocurrido un error. Intentelo de nuevo mas tarde. ");
+			System.out.println("ERROR: " + e.getMessage());
+			return null;
+		}
+	}
+	
+	
+	public static boolean fechaDisponible(LocalDate fechaIngresada, ReservaDaoImp reservaService, Salon salonAReservar) throws SalonNoDisponibleException {
+		
+		List<Reserva> reservas = reservaService.listarReservas();
+		for (Reserva reserva : reservas) {
+			
+            if (reserva.getFecha().isEqual(fechaIngresada) && reserva.getSalon().equals(salonAReservar) && reserva.isEstado()) {
+
+            	throw new SalonNoDisponibleException("Salon no disponible para la fecha ingresada. Ingrese otra:  ");
+            }
+        } 
+		
+		return true;
+		
+	}
+	
+	
+	
+	public static boolean comprobarFechaFutura(LocalDate fechaIngresada) throws FechaPasadaException {
+		
+	            LocalDate fechaActual = LocalDate.now();
+
+	            if (fechaIngresada.isAfter(fechaActual)) {
+	                return true;
+	            } else if (fechaIngresada.isEqual(fechaActual)) {
+	                return true;
+	            } else {
+	                throw new FechaPasadaException("La fecha debe ser una fecha futura: ");
+	            }
+
+	    }
+	
+	public static LocalDate transformarFecha(String fechaEntrada) {
+		
+			
+			DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+	        LocalDate fechaIngresada = LocalDate.parse(fechaEntrada, formato);
+	
+	        return fechaIngresada;
+	        
+
+	}
+	
+	public static boolean comprobarHoraEnRango(LocalTime horaIngresada) throws HoraFueraDeRangoException {
+		
+		boolean comprobacion = false;
+            LocalTime horaInicio = LocalTime.of(10, 0); // 10:00
+            LocalTime horaFin = LocalTime.of(23, 0);    // 23:00
+
+            comprobacion = !horaIngresada.isBefore(horaInicio) && !horaIngresada.isAfter(horaFin);
+            if (comprobacion) {
+            	return true;
+            }else {
+            	throw new HoraFueraDeRangoException("La hora debe estar dentro del rango 10:00 - 23:00 : ");
+            }
+            
+            //return !horaIngresada.isBefore(horaInicio) && !horaIngresada.isAfter(horaFin);
+        
+    }
+	
+	public static LocalTime transformarHora(String horaEntrada) {
+	
+
+			DateTimeFormatter formato = DateTimeFormatter.ofPattern("HH:mm");
+            LocalTime horaIngresada = LocalTime.parse(horaEntrada, formato);
+            return horaIngresada;
+
+	}
+	
+	public static boolean validarMontoAdelantado(double pagoAdelantado, Salon salon, List<ServicioAdicional> servicios) throws MontoNoValidoException {
+		double montoFinal = pagoAdelantado;
+		
+		
+		if (!servicios.isEmpty()) {
+			for (ServicioAdicional servicio : servicios) {
+				montoFinal += servicio.getPrecio();
+			}
+		}
+		
+		if (montoFinal < salon.getPrecio()) {
+			return true;
+		}else {
+			throw new MontoNoValidoException("El monto debe ser menor al precio total: ");
+		}
+	}
+	
+	public static void cargarSalones(SalonDaoImp salonService) {
+		salonService.guardarSalon(new Salon("Salon Cosmos", 60, false, 70000.0));
+        salonService.guardarSalon(new Salon("Salon Esmeralda", 20, false, 80000.0));
+        salonService.guardarSalon(new Salon("Salon Galaxy", 100, true, 90000.0));
+	}
+	
+	public static void cargarServiciosAdicionales(ServicioAdicionalDaoImp servicioService) {
+		
+		servicioService.guardarServicio(new ServicioAdicional("Cámara 360", 15000.0, true));
+        servicioService.guardarServicio(new ServicioAdicional("Cabina de fotos", 20000.0, true));
+        servicioService.guardarServicio(new ServicioAdicional("Filmación", 30000.0, true));
+        servicioService.guardarServicio(new ServicioAdicional("Pintacaritas", 10000.0, true));
+
+	}
+}
 
 
 	
