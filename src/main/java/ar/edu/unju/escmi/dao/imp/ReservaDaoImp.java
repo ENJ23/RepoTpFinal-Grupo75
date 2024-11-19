@@ -105,7 +105,6 @@ public class ReservaDaoImp implements IReservaDao{
 							System.out.println("Aqui tiene su vuelto: " + vuelto);
 							
 							reservaAModificar.setCancelado(true);
-							reservaAModificar.setEstado(false);
 							reservaAModificar.setMontoPagado(reservaAModificar.calcularMontoTotal());
 							transaction.commit();
 							System.out.println("Su pago ha sido completado! Muchas gracias!");
