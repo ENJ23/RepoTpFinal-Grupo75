@@ -137,6 +137,25 @@ public class ReservaDaoImp implements IReservaDao{
         	return reservas;
 
 	}
+	
+	@Override
+	public void eliminarReserva(Reserva reserva) {
+		// TODO Auto-generated method stub
+		EntityTransaction transaction = manager.getTransaction();
+		try {
+			transaction.begin();
+			Reserva reservaAEliminar = manager.find(Reserva.class, reserva.getId());
+			reservaAEliminar.setEstado(false);
+			transaction.commit();
+		}catch (Exception e){
+			if (transaction != null && transaction.isActive()) {
+				transaction.rollback();
+			}
+			
+			System.out.println("No se pudo guardar la reserva. Intentelo nuevamente más tarde.");
+			System.out.println("ERROR: " + e.getMessage());
+		}
+	}
 
 	
 }
