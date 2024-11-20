@@ -413,9 +413,10 @@ public class Main {
 	public static boolean fechaDisponible(LocalDate fechaIngresada, ReservaDaoImp reservaService, Salon salonAReservar) throws SalonNoDisponibleException {
 		
 		List<Reserva> reservas = reservaService.listarReservas();
+		
 		for (Reserva reserva : reservas) {
-			
-            if (reserva.getFecha().isEqual(fechaIngresada) && reserva.getSalon().equals(salonAReservar) && reserva.isEstado()) {
+
+            if (reserva.getFecha().equals(fechaIngresada) && reserva.getSalon().getId().equals(salonAReservar.getId())) {
 
             	throw new SalonNoDisponibleException("Salon no disponible para la fecha ingresada. Ingrese otra:  ");
             }
