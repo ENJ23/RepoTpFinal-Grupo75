@@ -11,4 +11,5 @@ public interface IReservaDao {
 	public void consultarReservas();
 	public List<Reserva> listarReservas();
 	public Reserva buscarReserva(long id);
+	public void eliminarReserva(Reserva reserva);
 }
