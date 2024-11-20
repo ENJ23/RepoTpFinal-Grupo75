@@ -270,7 +270,12 @@ public class Main {
 				idSalon = Long.parseLong(scanner.nextLine());
 				salonBuscado = salonService.buscarSalon(idSalon);
 				nuevaReserva.setSalon(salonBuscado);
-				break;
+					if (salonBuscado != null) {
+						break;
+					}else {
+						System.out.println("Salon no Encontrado. Ingrese otro ID."); 
+					}
+				
 				}catch(InputMismatchException e) {
 					System.out.println("Ingresa un ID valido: ");
 				}
@@ -379,7 +384,7 @@ public class Main {
 			while(!validacionMonto) {
 				try {
 					montoAdelantado = Double.parseDouble(scanner.nextLine());
-					validacionMonto = validarMontoAdelantado(montoAdelantado, salonBuscado, servicios);
+					validacionMonto = validarMontoAdelantado(montoAdelantado, nuevaReserva);
 					nuevaReserva.setPagoAdelantado(montoAdelantado);
 					nuevaReserva.setMontoPagado(montoAdelantado);
 					break;
@@ -473,17 +478,17 @@ public class Main {
 
 	}
 	
-	public static boolean validarMontoAdelantado(double pagoAdelantado, Salon salon, List<ServicioAdicional> servicios) throws MontoNoValidoException {
-		double montoFinal = pagoAdelantado;
+	public static boolean validarMontoAdelantado(double pagoAdelantado, Reserva reserva) throws MontoNoValidoException {
+		/*
+		 * double montoFinal = 0;
+		 * 
+		 * 
+		 * if (!servicios.isEmpty()) { for (ServicioAdicional servicio : servicios) {
+		 * montoFinal += servicio.getPrecio(); } }
+		 */
+		 
 		
-		
-		if (!servicios.isEmpty()) {
-			for (ServicioAdicional servicio : servicios) {
-				montoFinal += servicio.getPrecio();
-			}
-		}
-		
-		if (montoFinal < salon.getPrecio()) {
+		if (pagoAdelantado < reserva.calcularMontoTotal()) {
 			return true;
 		}else {
 			throw new MontoNoValidoException("El monto debe ser menor al precio total: ");
